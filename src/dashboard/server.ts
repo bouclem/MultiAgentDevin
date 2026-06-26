@@ -4,8 +4,9 @@
 
 import express from "express";
 import { WebSocketServer } from "ws";
-import { join, resolve } from "path";
+import { join, resolve, dirname } from "path";
 import { existsSync } from "fs";
+import { fileURLToPath } from "url";
 import { globalEmitter } from "./events.js";
 import type { CollaborationSession } from "../types.js";
 
@@ -23,7 +24,19 @@ export class DashboardServer {
 
   constructor(port?: number, staticPath?: string) {
     this.port = port ?? 3456;
-    this.staticPath = staticPath ?? join(process.cwd(), "dashboard", "dist");
+
+    // Resolve dashboard/dist relative to this file (dist/dashboard/server.js)
+    // so it works regardless of process.cwd()
+    const defaultPath = staticPath ?? join(dirname(fileURLToPath(import.meta.url)), "..", "..", "dashboard", "dist");
+
+    // Fallback: process.cwd()/dashboard/dist if the relative path doesn't exist
+    if (existsSync(defaultPath)) {
+      this.staticPath = defaultPath;
+    } else {
+      const cwdPath = join(process.cwd(), "dashboard", "dist");
+      this.staticPath = cwdPath;
+    }
+
     this.app = express();
     this.setupRoutes();
   }
@@ -79,6 +92,18 @@ export class DashboardServer {
       this.app.use(express.static(this.staticPath));
       this.app.get("*", (_req, res) => {
         res.sendFile(join(this.staticPath, "index.html"));
+      });
+    } else {
+      console.warn(
+        `[Dashboard] Static files not found at ${this.staticPath}. ` +
+        `Run "cd dashboard && npm install && npm run build" to build the dashboard UI. ` +
+        `API endpoints are still available at http://localhost:${this.port}/api/*`
+      );
+      this.app.get("*", (_req, res) => {
+        res.json({
+          message: "Dashboard UI not built. API available at /api/*",
+          staticPath: this.staticPath,
+        });
       });
     }
   }

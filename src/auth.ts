@@ -8,6 +8,7 @@
 import { readFileSync, existsSync } from "fs";
 import { homedir } from "os";
 import { join, resolve } from "path";
+import { Buffer } from "buffer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,7 +67,7 @@ export class AuthManager {
 
     const apiVersion = this.detectApiVersion(apiKey);
     const orgId = config?.orgId
-      ?? process.env.DEVIN_ORG_ID
+      ?? (process.env.DEVIN_ORG_ID ? this.interpolateValue(process.env.DEVIN_ORG_ID) : undefined)
       ?? this.resolveOrgIdFromDevinDesktopConfig();
 
     const baseUrl = config?.baseUrl
@@ -96,7 +97,11 @@ export class AuthManager {
   // --- Source 1: Environment Variables ---------------------------------------
 
   private static resolveApiKeyFromEnv(): string | undefined {
-    return process.env.DEVIN_API_KEY;
+    const raw = process.env.DEVIN_API_KEY;
+    if (!raw) return undefined;
+    // MCP clients may pass interpolation patterns like ${file:~/.devin/api_key}
+    // or ${env:DEVIN_API_KEY} — resolve them.
+    return this.interpolateValue(raw);
   }
 
   // --- Source 2: File-based --------------------------------------------------
@@ -104,25 +109,57 @@ export class AuthManager {
   private static resolveApiKeyFromFile(): string | undefined {
     // Check DEVIN_API_KEY_FILE env var first
     const envFilePath = process.env.DEVIN_API_KEY_FILE;
-    if (envFilePath && existsSync(envFilePath)) {
-      try {
-        return readFileSync(envFilePath, "utf-8").trim();
-      } catch {
-        // Fall through
-      }
+    if (envFilePath) {
+      const key = this.readKeyFile(envFilePath);
+      if (key) return key;
     }
 
     // Check ~/.devin/api_key
     const defaultPath = join(homedir(), ".devin", "api_key");
-    if (existsSync(defaultPath)) {
-      try {
-        return readFileSync(defaultPath, "utf-8").trim();
-      } catch {
-        // Fall through
-      }
-    }
+    return this.readKeyFile(defaultPath);
+  }
 
-    return undefined;
+  /**
+   * Read a key file and clean its content.
+   * Handles UTF-8, UTF-16 LE/BE (PowerShell echo), BOM, null bytes, quotes.
+   */
+  private static readKeyFile(filePath: string): string | undefined {
+    if (!existsSync(filePath)) return undefined;
+    try {
+      const buf = readFileSync(filePath);
+      let str: string;
+
+      // Detect UTF-16 LE (BOM: FF FE) or UTF-16 BE (BOM: FE FF)
+      if (buf.length >= 2) {
+        if (buf[0] === 0xff && buf[1] === 0xfe) {
+          // UTF-16 LE
+          str = buf.slice(2).toString("utf16le");
+        } else if (buf[0] === 0xfe && buf[1] === 0xff) {
+          // UTF-16 BE
+          str = buf.slice(2).toString("utf16le").split("").reverse().join("");
+        } else {
+          // UTF-8 (possibly with BOM)
+          str = buf.toString("utf-8");
+        }
+      } else {
+        str = buf.toString("utf-8");
+      }
+
+      return this.cleanKey(str);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Clean a key string: strip BOM, null bytes, whitespace, surrounding quotes.
+   */
+  private static cleanKey(raw: string): string {
+    return raw
+      .replace(/\uFEFF/g, "")     // BOM
+      .replace(/\0/g, "")          // null bytes
+      .replace(/^["']|["']$/g, "") // surrounding quotes
+      .trim();
   }
 
   // --- Source 3: Devin Desktop (ex-Windsurf) config --------------------------
@@ -234,14 +271,8 @@ export class AuthManager {
       if (p.startsWith("~/")) {
         p = join(homedir(), p.slice(2));
       }
-      try {
-        if (existsSync(p)) {
-          return readFileSync(p, "utf-8").trim();
-        }
-      } catch {
-        // Leave unchanged
-      }
-      return p;
+      const key = this.readKeyFile(p);
+      return key ?? p;
     });
 
     return result;
