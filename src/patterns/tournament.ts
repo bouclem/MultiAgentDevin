@@ -121,7 +121,7 @@ export class TournamentPattern extends PatternBase {
       }));
 
       // Also check reviewer's structured output for rankings
-      const reviewerOutput = reviewer.structuredOutput as {
+      const reviewerOutput = (reviewer.structuredOutput ?? {}) as {
         rankings?: Array<{ agent_id?: string; score?: number; rank?: number }>;
       };
 
@@ -267,7 +267,7 @@ export class TournamentPattern extends PatternBase {
       : undefined;
 
     const result = this.buildResult(
-      `Tournament completed in ${session.rounds.length} rounds. Champion: ${bestAgent?.roleName ?? "N/A"} (score: ${this.extractScore(bestAgent as Agent) ?? "N/A"}). ${bestAgent ? this.extractSummary(bestAgent) : ""}`,
+      `Tournament completed in ${session.rounds.length} rounds. Champion: ${bestAgent?.roleName ?? "N/A"} (score: ${bestAgent ? this.extractScore(bestAgent) ?? "N/A" : "N/A"}). ${bestAgent ? this.extractSummary(bestAgent) : ""}`,
       finalSolutions,
       bestAgent
     );

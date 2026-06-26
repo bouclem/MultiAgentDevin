@@ -98,13 +98,20 @@ export class DevinClient {
   }
 
   async sendMessage(sessionId: string, message: string): Promise<void> {
-    await this.request("POST", `${this.sessionsPath}/${sessionId}/message`, {
+    const messagePath = this.apiVersion === "v3" ? "messages" : "message";
+    await this.request("POST", `${this.sessionsPath}/${sessionId}/${messagePath}`, {
       message,
     });
   }
 
   async listSessions(): Promise<DevinSessionResponse[]> {
     const res = await this.request("GET", this.sessionsPath);
+    // v3 API returns { items: [...], end_cursor, has_next_page, total }
+    // v1 API returns a direct array
+    if (Array.isArray(res)) return res as DevinSessionResponse[];
+    if (res && Array.isArray((res as Record<string, unknown>).items)) {
+      return (res as Record<string, unknown>).items as DevinSessionResponse[];
+    }
     return res as DevinSessionResponse[];
   }
 
