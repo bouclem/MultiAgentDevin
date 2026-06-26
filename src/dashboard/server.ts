@@ -109,14 +109,21 @@ export class DashboardServer {
   }
 
   start(): Promise<void> {
-    return new Promise((resolvePromise) => {
-      this.server = this.app.listen(this.port, () => {
-        console.log(`[Dashboard] Server running at http://localhost:${this.port}`);
+    return this.tryStart(this.port);
+  }
 
-        this.wss = new WebSocketServer({ server: this.server!, path: "/ws" });
+  private tryStart(port: number, attempts = 0): Promise<void> {
+    const MAX_RETRIES = 10;
+
+    return new Promise((resolvePromise, rejectPromise) => {
+      const server = this.app.listen(port, () => {
+        this.port = port;
+        this.server = server;
+        console.log(`[Dashboard] Server running at http://localhost:${port}`);
+
+        this.wss = new WebSocketServer({ server: server, path: "/ws" });
 
         this.wss.on("connection", (ws) => {
-          // Send recent events on connect
           const recentEvents = globalEmitter.getRecentEvents(100);
           ws.send(
             JSON.stringify({
@@ -125,7 +132,6 @@ export class DashboardServer {
             })
           );
 
-          // Forward new events to this client
           const listener = (event: unknown) => {
             if (ws.readyState === ws.OPEN) {
               ws.send(JSON.stringify({ type: "event", data: event }));
@@ -140,6 +146,27 @@ export class DashboardServer {
         });
 
         resolvePromise();
+      });
+
+      server.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code === "EADDRINUSE" && attempts < MAX_RETRIES) {
+          // Port in use — try next port automatically
+          server.close();
+          const nextPort = port + 1;
+          console.warn(
+            `[Dashboard] Port ${port} in use, trying ${nextPort}...`
+          );
+          this.tryStart(nextPort, attempts + 1).then(resolvePromise).catch(rejectPromise);
+        } else if (err.code === "EADDRINUSE") {
+          console.warn(
+            `[Dashboard] Could not find a free port after ${MAX_RETRIES} attempts. ` +
+            `Dashboard disabled — MCP server continues without it.`
+          );
+          rejectPromise(err);
+        } else {
+          console.error("[Dashboard] Server error:", err.message);
+          rejectPromise(err);
+        }
       });
     });
   }

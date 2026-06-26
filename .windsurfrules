@@ -1,0 +1,93 @@
+# MultiAgentDevin — Autonomous Multi-Agent Collaboration
+
+## AUTONOMOUS MODE — ALWAYS ACTIVE
+
+You MUST proactively use MultiAgentDevin tools for ANY non-trivial task. Do NOT wait for the user to ask — if a task matches a pattern below, immediately call the appropriate MCP tool.
+
+### Auto-start rules (no user prompt needed):
+- User asks to optimize/improve something → call `tournament` or `iterative_improve`
+- User asks to review code/a PR → call `parallel_code_review`
+- User asks to debug/fix a complex issue → call `swarm_solve`
+- User asks to research/evaluate technologies → call `multi_agent_collaborate` with `researcher` role
+- User asks to design/decide architecture → call `agent_debate`
+- User asks for a multi-step task → call `multi_agent_collaborate` with pattern "pipeline"
+- User asks to train/fine-tune/fine-tune a model → call `tournament` with `training-optimizer` role
+- User asks to optimize inference/serving → call `tournament` with `inference-optimizer` role
+
+### After starting a collaboration:
+1. Use `get_team_status` to poll progress every few seconds
+2. Report intermediate results to the user as agents complete
+3. When all agents finish, summarize the best solution and apply it
+4. Direct user to dashboard at http://localhost:3456 for real-time visualization
+5. If an agent fails, automatically retry or spawn a replacement
+
+### NEVER do complex tasks yourself when a multi-agent pattern applies.
+### ALWAYS delegate to the appropriate MultiAgentDevin tool immediately.
+
+## CRITICAL: This project includes a MultiAgentDevin MCP server with the following tools:
+
+- `multi_agent_collaborate` — Main orchestration (pattern selector)
+- `create_agent_team` — Create team with specialist roles
+- `agent_debate` — Multiple agents solve same problem
+- `parallel_code_review` — Multiple specialist reviewers
+- `iterative_improve` — Write → critique → improve loop
+- `tournament` — Elimination tournament with agent recycling
+- `swarm_solve` — Self-organizing swarm with dynamic sub-agents
+- `get_team_status` — Check collaboration progress
+- `save_pattern_template` — Save reusable collaboration config
+- `run_pattern_template` — Execute a saved template
+
+## Pattern Selection Guide
+
+### Use `tournament` when:
+- Optimizing performance (database, API, inference, training)
+- Finding the best approach among alternatives
+- Tasks that benefit from competitive evaluation
+- Parameters: numAgents=8, numRounds=3, recycleEliminatedAgents=true, branchingStrategy="binary-tree"
+
+### Use `parallel_code_review` when:
+- Reviewing code, PRs, or modules
+- Security/performance/architecture analysis
+- Parameters: specialistRoles=["security","performance","architecture","testing","devops"]
+
+### Use `iterative_improve` when:
+- Fixing bugs that need multiple attempts
+- Improving code quality iteratively
+- Parameters: maxRounds=3, qualityThreshold=85
+
+### Use `swarm_solve` when:
+- Debugging complex issues
+- Tasks with unknown scope or complexity
+- Parameters: initialAgents=3, maxDepth=3
+
+### Use `agent_debate` when:
+- Architecture decisions
+- Technology choices
+- Design trade-offs
+- Parameters: roles=["security","performance","architecture"]
+
+### Use `multi_agent_collaborate` with pattern "pipeline" when:
+- Multi-step tasks (design → implement → test → review)
+- Sequential handoff workflows
+
+## AI Specialist Roles
+
+Always include relevant AI specialist roles for AI/ML tasks:
+- `researcher` — literature review, technology evaluation
+- `inference-optimizer` — vLLM, TensorRT-LLM, quantization
+- `training-optimizer` — DDP, FSDP, DeepSpeed, mixed precision
+- `data-scientist` — EDA, statistical modeling
+- `ml-engineer` — MLOps, model deployment
+- `prompt-engineer` — prompt design, few-shot
+- `api-designer` — REST/GraphQL, OpenAPI
+- `database-optimizer` — query optimization, indexing
+- `frontend-specialist` — React/Vue, accessibility
+- `backend-specialist` — microservices, caching
+- `mobile-specialist` — iOS/Android, React Native
+
+All AI specialist roles automatically run benchmarks before/after changes.
+
+## Branching Strategy
+
+- Use `branchingStrategy: "binary-tree"` for competitive patterns (tournament, debate)
+- Use `branchingStrategy: "linear"` for sequential improvement (pipeline, iterative)
