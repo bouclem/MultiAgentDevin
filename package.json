@@ -1,0 +1,41 @@
+{
+  "name": "multi-agent-devin",
+  "version": "1.1.0",
+  "description": "MCP server plugin for Devin that enables multi-agent collaboration patterns including parallel decomposition, debate, tournament, and self-organizing swarms.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "multi-agent-devin": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "dashboard:dev": "cd dashboard && npm run dev",
+    "dashboard:build": "cd dashboard && npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "devin",
+    "mcp",
+    "multi-agent",
+    "collaboration",
+    "ai",
+    "cognition",
+    "plugin"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "express": "^4.21.2",
+    "ws": "^8.18.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
